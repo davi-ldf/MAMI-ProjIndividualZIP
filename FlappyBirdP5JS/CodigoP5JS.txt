@@ -1,0 +1,168 @@
+let birdImg;      // Variável para armazenar a imagem do pássaro
+let bgImg;        // Variável para armazenar a imagem de fundo
+let pipeTopImg;   // Variável para a imagem do cano superior
+let pipeBottomImg;// Variável para a imagem do cano inferior
+let bird;
+let pipes = [];
+let gameState = 'start'; // Pode ser 'start', 'playing', 'gameOver'
+
+function preload() {
+  birdImg = loadImage('assets/flappyBirdd.png');      // Carrega a imagem do pássaro
+  bgImg = loadImage('assets/bgFlappyBird.png');       // Carrega a imagem de fundo
+  pipeTopImg = loadImage('assets/pipeTOPP.png');       // Carrega a imagem do cano superior
+  pipeBottomImg = loadImage('assets/pipeBottom.png'); // Carrega a imagem do cano inferior
+}
+
+function setup() {
+  createCanvas(600, 400);
+  bird = new Bird();
+  pipes.push(new Pipe());
+}
+
+function draw() {
+  background(bgImg); // Desenha o fundo
+
+  // Gerenciando estados do jogo
+  if (gameState === 'start') {
+    displayStartScreen();
+  } else if (gameState === 'playing') {
+    updateGame();
+  } else if (gameState === 'gameOver') {
+    displayGameOverScreen();
+  }
+}
+
+function keyPressed() {
+  if (key === ' ' && gameState === 'playing') {
+    bird.flap();
+  }
+  
+  // Reiniciar o jogo se pressionar ENTER no estado 'gameOver'
+  if (keyCode === ENTER && gameState === 'gameOver') {
+    resetGame();
+  }
+}
+
+function displayStartScreen() {
+  fill(0);
+  textSize(32);
+  textAlign(CENTER);
+  text('Pressione ENTER para começar', width / 2, height / 2);
+  
+  // Começar o jogo ao pressionar ENTER
+  if (keyIsDown(ENTER)) {
+    gameState = 'playing';
+  }
+}
+
+function displayGameOverScreen() {
+  fill(0);
+  textSize(32);
+  textAlign(CENTER);
+  text('Game Over!', width / 2, height / 2);
+  text('Pressione ENTER para reiniciar', width / 2, height / 2 + 30);
+}
+
+function updateGame() {
+  // Atualizar e desenhar o pássaro
+  bird.update();
+  bird.show();
+
+  // Atualizar e desenhar os canos
+  if (frameCount % 75 === 0) {
+    pipes.push(new Pipe());
+  }
+  
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    pipes[i].update();
+    pipes[i].show();
+    
+    // Verificar colisões
+    if (pipes[i].hits(bird)) {
+      gameState = 'gameOver';
+    }
+    
+    // Remover canos fora da tela
+    if (pipes[i].offscreen()) {
+      pipes.splice(i, 1);
+    }
+  }
+
+  // Verificar se o pássaro caiu
+  if (bird.offscreen()) {
+    gameState = 'gameOver';
+  }
+}
+
+function resetGame() {
+  bird = new Bird();
+  pipes = [];
+  gameState = 'start';
+}
+
+// Classe para o pássaro
+class Bird {
+  constructor() {
+    this.y = height / 2;
+    this.x = 64;
+    this.gravity = 0.6;
+    this.lift = -15;
+    this.velocity = 0;
+    this.size = 32;
+  }
+
+  flap() {
+    this.velocity = this.lift;
+  }
+
+  update() {
+    this.velocity += this.gravity;
+    this.y += this.velocity;
+    this.velocity *= 0.9; // Diminui a velocidade gradualmente
+  }
+
+  show() {
+    image(birdImg, this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+  }
+
+  offscreen() {
+    return this.y > height || this.y < 0;
+  }
+}
+
+// Classe para os canos
+class Pipe {
+  constructor() {
+    this.spacing = 150;
+    this.width = 50;
+    this.speed = 3;
+    this.top = random(height / 6, (height * 2) / 3);
+    this.bottom = height - (this.top + this.spacing);
+    this.x = width;
+  }
+
+  update() {
+    this.x -= this.speed;
+  }
+
+  show() {
+    // Desenha o cano superior
+    image(pipeTopImg, this.x, 0, this.width, this.top);
+    
+    // Desenha o cano inferior
+    image(pipeBottomImg, this.x, height - this.bottom, this.width, this.bottom);
+  }
+
+  offscreen() {
+    return this.x < -this.width;
+  }
+
+  hits(bird) {
+    if (bird.y < this.top || bird.y > height - this.bottom) {
+      if (bird.x > this.x && bird.x < this.x + this.width) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
